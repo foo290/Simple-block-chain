@@ -7,12 +7,13 @@ class Transaction:
     """
     A dummy replica of transaction to simulate blockchain concept
     """
-    def __init__(self, author, data, balance: int, amount: int):
-        self.author = author
+
+    def __init__(self, sender, receiver, data, amount: int):
+        self.sender = sender
+        self.receiver = receiver
         self.data = data
-        self.timestamp = str(datetime.now())
-        self.balance = balance
         self.amount = amount
+        self.timestamp = str(datetime.now())
 
     def __str__(self):
         return json.dumps(self.__dict__)
@@ -26,9 +27,10 @@ class Block(object):
     This class represents a single block in block chain, contains all necessary details to be unique in entire
      blockchain.
     """
-    def __init__(self, index, transaction, previous_hash, nonce=0):
+
+    def __init__(self, index, transactions: list, previous_hash, nonce=0):
         self.index = index
-        self.transaction = transaction
+        self.transactions = transactions
         self.timestamp = str(datetime.now())
         self.previous_hash = previous_hash
         self.nonce = nonce  # Number of tries took to get proof-of-work
@@ -50,7 +52,7 @@ class Blockchain:
     """
 
     #  Number of zeros as prefix for proof-of-work
-    DIFFICULTY = 2
+    DIFFICULTY = 3
 
     def __init__(self):
         self.unconfirmed_transactions = []
@@ -62,7 +64,7 @@ class Blockchain:
         Genesis block is the origin of blockchain which has previous has of 0
         :return: None
         """
-        genesis_block = Block(0, {'transaction': 'Genesis Block'}, 0)
+        genesis_block = Block(0, [{'transaction': 'Genesis Block'}], 0)
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
 
@@ -124,59 +126,66 @@ class Blockchain:
         """
         self.unconfirmed_transactions.append(transaction)
 
-    def mine(self, transaction: Transaction):
+    def mine(self):
         """
         Main function that mines and validate transactions from unconfirmed transaction list.
         It creates new block based on transaction, calculates proof-of-work and if all checks out, then adds to
         blockchain
-        :param transaction: An object of Transaction class
         :return: Index of the block added in block chain
         """
+        if not self.unconfirmed_transactions:
+            return False
         last_block = self.last_block
         new_block = Block(index=last_block.index + 1,
-                          transaction=json.loads(str(transaction)),
+                          transactions=[json.loads(str(i)) for i in self.unconfirmed_transactions],
                           previous_hash=last_block.hash)
 
         proof = self.proof_of_work(new_block)
-        self.add_block(new_block, proof)
-        return new_block.index
+        self.unconfirmed_transactions = []
+        if self.add_block(new_block, proof):
+            return new_block.index
+        else:
+            return False
 
 
 if __name__ == '__main__':
-
     t1 = Transaction(
-        author="Nitin",
+        sender="Nitin",
+        receiver="somePizzaGuy",
         data="Transfer 8 bitcoins for a simple pizza xD",
-        balance=8,
         amount=8
     )
     t2 = Transaction(
-        author="SomeRandomDude",
+        sender="SomeRandomDude",
         data="Transfer 80 bitcoins for a simple pizza xD",
-        balance=80,
+        receiver="somePizzaGuy",
         amount=80
     )
     t3 = Transaction(
-        author="ThatGuy",
+        sender="ThatGuy",
         data="Transfer 8 bitcoins for a simple pizza xD",
-        balance=8,
+        receiver="somePizzaGuy",
         amount=8
     )
     t4 = Transaction(
-        author="AnotherSimp",
+        sender="AnotherSimp",
         data="Transfer 8 bitcoins for a simple pizza xD",
-        balance=8,
+        receiver="somePizzaGuy",
         amount=8
     )
 
     blockchain = Blockchain()
 
     blockchain.add_new_transaction(t1)
-    blockchain.add_new_transaction(t2)
-    blockchain.add_new_transaction(t3)
-    blockchain.add_new_transaction(t4)
+    print(blockchain.mine())
 
-    for t in blockchain.unconfirmed_transactions:
-        blockchain.mine(t)
+    blockchain.add_new_transaction(t2)
+    print(blockchain.mine())
+
+    blockchain.add_new_transaction(t3)
+    print(blockchain.mine())
+
+    blockchain.add_new_transaction(t4)
+    print(blockchain.mine())
 
     blockchain.show_chain()
